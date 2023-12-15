@@ -1,0 +1,14 @@
+name = "DistributedSigprocRequantizer"
+uuid = "b669612f-f293-415c-b76b-98013caf8fbf"
+authors = ["David MacMahon <davidm@astro.berkeley.edu>"]
+version = "0.0.1"
+
+[deps]
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
+Blio = "87855aa7-8b24-49b4-b316-97c011f78d17"
+Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+Glob = "c27321d9-0574-5035-807b-f59d2c89b15c"
+LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
+OnlineStats = "a15396b6-48d5-5d58-9928-6d29437db91e"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
