@@ -2,7 +2,6 @@ module DistributedSigprocRequantizer
 
 using OnlineStats, Blio, Glob, Statistics
 using Distributed
-import Pkg
 
 export setup_workers, teardown_workers, glob_files, open_files
 export get_global_hist, write_quantized_files
