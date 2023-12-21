@@ -1,7 +1,7 @@
 name = "DistributedSigprocRequantizer"
 uuid = "b669612f-f293-415c-b76b-98013caf8fbf"
 authors = ["David MacMahon <davidm@astro.berkeley.edu>"]
-version = "0.0.1"
+version = "0.1.0"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
