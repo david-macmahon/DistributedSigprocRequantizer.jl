@@ -3,7 +3,9 @@ module DistributedSigprocRequantizer
 using Distributed, OnlineStats, Blio, Glob, Statistics, Sockets
 
 export setup_workers, teardown_workers, glob_files, open_files
-export get_global_hist, write_quantized_files
+export dist_fits!, dist_fit!
+export get_local_hists, get_global_hist
+export write_quantized_files
 
 include("DistributedSumFil.jl")
 export DistributedSumFil
@@ -66,44 +68,33 @@ function open_files(ws::AbstractVector{Int},
     wwf, fnexist, fbhs
 end
 
-function get_extremas(ws; qlen=10_000)
+function dist_fits!(o, ws; qlen=5_000)
     fs = map(ws) do w
         @spawnat w begin
             qlen = min(qlen, size(Main.fbd, 3))
-            fit!(Extrema(Float32), @view(Main.fbd[:,:,1:qlen]))
+            fit!(o, @view(Main.fbd[:,:,1:qlen]))
         end
     end
     fetch.(fs)
 end
 
-function make_hist(extremas; closed=true)
-    global_extrema = Extrema(Float32)
-    foreach(e->merge!(global_extrema, e), extremas)
-    r = floor(global_extrema.min):ceil(global_extrema.max)
-    Hist(r, Float32; closed)
+function dist_fit!(o, ws; qlen=5_000)
+    local_fits = dist_fits!(o, ws; qlen)
+    foreach(l->merge!(o, l), local_fits)
+    o
 end
 
-function fit_hists(ws, h; qlen=10_000)
-    fs = map(ws) do w
-        @spawnat w begin
-            qlen = min(qlen, size(Main.fbd, 3))
-            fit!(h, @view(Main.fbd[:,:,1:qlen]))
-        end
-    end
-    fetch.(fs)
+function get_local_hists(ws; qlen=5_000, closed=true)
+    global_extrema = dist_fit!(Extrema(Float32), ws; qlen)
+    edges = global_extrema.min-0.5f0:global_extrema.max+0.5f0
+    dist_fits!(Hist(edges, Float32; closed), ws; qlen)
 end
 
-function get_global_hist(ws; qlen=10_000, closed=true)
-    @info "getting local extremas"
-    @time local_extremas = get_extremas(ws; qlen)
-    global_hist = make_hist(local_extremas; closed)
-    @info "fitting local hists"
-    # Empty global_hist is copied to each worker
-    @time local_hists = fit_hists(ws, global_hist; qlen)
-    @info "merging local hists into global hist"
-    @time foreach(e->merge!(global_hist, e), local_hists)
-
-    global_hist
+function get_global_hist(ws; qlen=5_000, closed=true)
+    local_hists = get_local_hists(ws; qlen, closed)
+    # Merge all local hists into local_hists[1]
+    foldl(merge!, local_hists)
+    local_hists[1]
 end
 
 function quantize(x, lo, hi, d=hi-lo)
