@@ -25,9 +25,9 @@ function parse_commandline(args=ARGS)
             default = 10_000
         "-t", "--tail"
             help = "fraction of samples to ignore at tails"
+            action = :append_arg
             arg_type = Float32
             range_tester = x->(eps(Float32) < x < 0.5-eps(Float32))
-            default = 3f-6
         "HOSTS"
             help = "one or more hosts containing files to 8 bit"
             arg_type = String
@@ -56,6 +56,9 @@ function main()::Int
     tail = parsed_args["tail"]
     outdir = get(parsed_args, "outdir", "dir")
 
+    # If no tail options were specified, use 3f-6
+    isempty(tail) && push!(tail, 3f-6)
+
     @info "setting up workers on $(length(hosts)) hosts"
     ws = setup_workers(hosts)
 
@@ -72,7 +75,9 @@ function main()::Int
 
     @info "gathering stats from $(length(wsfexist)) hosts"
     global_hist = get_global_hist(ws; qlen)
-    lo, hi = quantile.(global_hist, (tail, 1-tail))
+
+    # Compute lo/hi thresholds
+    lo, hi = quantile.(global_hist, (first(tail), 1-last(tail)))
     @info "using thresholds $lo and $hi"
 
     outbasenames = replace.(basename.(fnexist), r"((\.\d\d\d\d)?\.fil$)"=>s".8\1")
