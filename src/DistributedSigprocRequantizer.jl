@@ -118,9 +118,11 @@ function output_8bit(fname, fbh, fbd, lo, hi; chunk_size=2^20)
     nspec_per_chunk = fld(chunk_size, fbh[:sample_size])
     vws=(@view(fbd[:,:,t]) for t in Iterators.partition(axes(fbd,3), nspec_per_chunk))
     q8 = similar(first(vws), UInt8)
-    fbh[:nbits] = 8
+    # Copy fbh so that we don't modify fbh (so fbh will still reflect fbd)
+    outfbh = Filterbank.Header(fbh)
+    outfbh[:nbits] = 8
     open(fname, "w") do io
-        write(io, fbh)
+        write(io, outfbh)
         for v in vws
             if size(v) != size(q8)
                 q8 = similar(v, UInt8)
