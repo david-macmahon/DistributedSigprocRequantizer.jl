@@ -71,8 +71,17 @@ end
 function dist_fits!(o, ws; qlen=5_000)
     fs = map(ws) do w
         @spawnat w begin
-            qlen = min(qlen, size(Main.fbd, 3))
+            nsamps = size(Main.fbd, 3)
+            qlen = clamp(qlen, 1, nsamps)
+            # Fit first qlen samples
             fit!(o, @view(Main.fbd[:,:,1:qlen]))
+            # If more samples exist beyond qlen
+            if qlen < nsamps
+                # Subsample them
+                stride = cld(nsamps-qlen, qlen)
+                fit!(o, @view(Main.fbd[:,:,qlen+1:stride:end]))
+            end
+            o
         end
     end
     fetch.(fs)
