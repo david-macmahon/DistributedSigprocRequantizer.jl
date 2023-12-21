@@ -1,7 +1,6 @@
 module DistributedSigprocRequantizer
 
-using OnlineStats, Blio, Glob, Statistics
-using Distributed
+using Distributed, OnlineStats, Blio, Glob, Statistics, Sockets
 
 export setup_workers, teardown_workers, glob_files, open_files
 export get_global_hist, write_quantized_files
@@ -9,14 +8,9 @@ export get_global_hist, write_quantized_files
 include("DistributedSumFil.jl")
 export DistributedSumFil
 
-#=
-hosts=["blc0$i" for i in 0:7]
-dir = "/datax/dibas/AGBT23A_999_37/GUPPI"
-pattern = "BLP*/*_guppi_*_0009.rawspec.0001.fil"
-=#
-
 function setup_workers(hosts)
-    ws = addprocs(hosts; exeflags="--project=$(dirname(dirname(@__FILE__)))")
+    ws = addprocs(hosts .* " " .* string.(getaddrinfo.(hosts));
+                  exeflags="--project=$(dirname(dirname(@__FILE__)))")
 
     @eval Main using Distributed
     @eval Main @everywhere $(ws[1]) using DistributedSigprocRequantizer
