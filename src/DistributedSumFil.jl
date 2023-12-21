@@ -22,7 +22,7 @@ function parse_commandline(args=ARGS)
         "-q", "--qlen"
             help = "number of spectra to use for stats"
             arg_type = Int
-            default = 10_000
+            default = 5_000
         "-t", "--tail"
             help = "fraction of samples to ignore at tails"
             action = :append_arg
