@@ -40,19 +40,29 @@ end
 
 function open_files(ws::AbstractVector{Int},
                     wfnames::AbstractVector{<:AbstractVector{String}})
+    # Only work with workers on which files were found
     wfns = Iterators.filter(wf->!isempty(wf[2]), zip(ws,wfnames))
+    # wwf is workers with found files
+    wwf = first.(wfns)
+    # fnexist is filenames that were found on workers
+    fnexist = first.(last.(wfns))
+
     fs = map(wfns) do (w,f)
         @spawnat w begin
             Main.fbh, Main.fbd = Filterbank.mmap(f[1])
             Main.fbh
         end
     end
+    # fbhs is filterbank headers for files that were found on workers
     fbhs = fetch.(fs)
-    wwf = first.(wfns)
-    fnexist = first.(last.(wfns))
-    # wwf is workers with files
-    # fnexist is filenames that exist on workers with files
-    # fbhs is filterbank headers of those files
+
+    # Permute workers with files, filenames, and headers into descending
+    # frequency order
+    p = sortperm(fbhs, by=h->h[:fch1], rev=true)
+    permute!(wwf, p)
+    permute!(fnexist, p)
+    permute!(fbhs, p)
+
     wwf, fnexist, fbhs
 end
 
