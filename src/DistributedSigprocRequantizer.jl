@@ -214,7 +214,8 @@ function write_quantized_files(ws, outnames, lo, hi; chunk_size=2^20)
     foreach(wait, fs)
 end
 
-function splice_quantized_file(ws, fbhs, outname, lo, hi; chunk_size=2^20)
+function splice_quantized_file(ws, fbhs, outname, lo, hi;
+                               chunk_size=2^20, show_progress=false)
 
     # Create a remote channel for each worker that will each hold up to 32
     # Array{UInt8,3} instances
@@ -235,8 +236,10 @@ function splice_quantized_file(ws, fbhs, outname, lo, hi; chunk_size=2^20)
     splicebuf = Array{UInt8}(undef, outfbh[:nchans], length(ws), outfbh[:nifs], nspec_per_chunk)
 
     # Compute number of output spectra
-    nspec_total = minimum(get.(fbhs, :nsamps))
-    pb = ProgressBar(total=nspec_total, unit="spectra")
+    if show_progress
+        nspec_total = minimum(get.(fbhs, :nsamps))
+        pb = ProgressBar(total=nspec_total, unit="spectra")
+    end
 
     # Update outfbh for spliced 8-bit file.  For now assume all nodes have data
     # that are contiguous in frequency.
@@ -264,7 +267,7 @@ function splice_quantized_file(ws, fbhs, outname, lo, hi; chunk_size=2^20)
                     copyto!(dst, src)
                 end
                 write(io, splicebuf)
-                update(pb, nspec_per_chunk)
+                show_progress && update(pb, nspec_per_chunk)
             # Else, find smallest number of spectra, make views for that many
             # spectra of each chunk, output views, and then we are done
             else
@@ -276,7 +279,7 @@ function splice_quantized_file(ws, fbhs, outname, lo, hi; chunk_size=2^20)
                     copyto!(dst, @view(src[:,:,1:nmin]))
                 end
                 write(io, vw)
-                update(pb, nmin)
+                show_progress && update(pb, nmin)
                 break
             end
         end # while true

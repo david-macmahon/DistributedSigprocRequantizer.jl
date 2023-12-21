@@ -8,6 +8,9 @@ function parse_commandline(args=ARGS)
     aps = ArgParseSettings()
 
     @add_arg_table! aps begin
+        "-b", "--bar"
+            help = "show progress bar when splicing"
+            action = :store_true
         "-d", "--dir"
             help = "base input directory"
             arg_type = String
@@ -59,6 +62,7 @@ function main()::Int
     tail = parsed_args["tail"]
     outdir = get(parsed_args, "outdir", "dir")
     splice = parsed_args["splice"]
+    show_progress = parsed_args["bar"]
 
     # If no tail options were specified, use 3f-6
     isempty(tail) && push!(tail, 3f-6)
@@ -89,7 +93,7 @@ function main()::Int
                           r"^(blc.._)?"=>"spliced_", r"((\.\d\d\d\d)?\.fil)"=>s".8\1")
         outname = joinpath(outdir, outbase)
         @info "quantizing, splicing, and writing output to $outname"
-        splice_quantized_file(wsfexist, fbhs, outname, lo, hi)
+        splice_quantized_file(wsfexist, fbhs, outname, lo, hi; show_progress)
     else
         outbasenames = replace.(basename.(fnexist), r"((\.\d\d\d\d)?\.fil$)"=>s".8\1")
         outnames = joinpath.(outdir, outbasenames)
