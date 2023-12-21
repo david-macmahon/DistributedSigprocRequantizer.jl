@@ -106,19 +106,12 @@ function get_global_hist(ws; qlen=10_000, closed=true)
     global_hist
 end
 
-function quantize(x, lo, hi, d=hi-lo)::UInt8
-#try
-    UInt8(
-        ifelse(x < lo, 0f0,
-            ifelse(x > hi, 255f0,
-                round((x-lo)/d * 255f0)
-            )
+function quantize(x, lo, hi, d=hi-lo)
+    ifelse(x < lo, 0f0,
+        ifelse(x > hi, 255f0,
+            round((x-lo)/d * 255f0)
         )
     )
-#catch
-#    @show x lo hi d
-#    rethrow()
-#end
 end
 
 function output_8bit(fname, fbh, fbd, lo, hi; chunk_size=2^20)
