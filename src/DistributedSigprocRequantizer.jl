@@ -3,6 +3,7 @@ module DistributedSigprocRequantizer
 using Distributed, OnlineStats, Blio, Glob, Statistics, Sockets, ProgressBars
 
 export setup_workers, teardown_workers, glob_files, open_files
+export make_unit_hist, make_8bit_hist, dist_channel_fits
 export dist_fits!, dist_fit!
 export get_local_hists, get_global_hist
 export write_quantized_files, splice_quantized_file
@@ -66,6 +67,48 @@ function open_files(ws::AbstractVector{Int},
     permute!(fbhs, p)
 
     wwf, fnexist, fbhs
+end
+
+function make_unit_hist(lo, hi; closed=true)
+    r = lo-0.5:hi+0.5
+    Hist(r, Float32; closed)
+end
+
+make_unit_hist(lohi::Tuple; closed=true) = make_unit_hist(first(lohi), last(lohi); closed)
+make_unit_hist(e; closed=true) = make_unit_hist(extrema(e); closed)
+
+function make_8bit_hist(lo, hi; closed=true)
+    r = range(lo, stop=hi, length=257)
+    Hist(r, Float32; closed)
+end
+
+make_8bit_hist(lohi::Tuple; closed=true) = make_8bit_hist(first(lohi), last(lohi); closed)
+make_8bit_hist(e; closed=true) = make_8bit_hist(extrema(e); closed)
+
+function dist_channel_fits(o, ws; qlen=5_000)
+    fs = map(ws) do w
+        @spawnat w begin
+            ochans = [copy(o) for _ in axes(Main.fbd, 1)]
+            nsamps = size(Main.fbd, 3)
+            qlen = clamp(qlen, 1, nsamps)
+            # Fit first qlen samples for each channel
+            fbd_chans = eachslice(@view(Main.fbd[:,:,1:qlen]); dims=1)
+            for (oc, fbd_chan) in zip(ochans, fbd_chans)
+                fit!(oc, fbd_chan)
+            end
+            # If more samples exist beyond qlen
+            if qlen < nsamps
+                # Subsample them
+                stride = cld(nsamps-qlen, qlen)
+                fbd_chans = eachslice(@view(Main.fbd[:,:,qlen+1:stride:end]); dims=1)
+                for (oc, fbd_chan) in zip(ochans, fbd_chans)
+                    fit!(oc, fbd_chan)
+                end
+            end
+            ochans
+        end
+    end
+    fetch.(fs)
 end
 
 function dist_fits!(o, ws; qlen=5_000)
