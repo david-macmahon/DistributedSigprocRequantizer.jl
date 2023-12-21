@@ -23,6 +23,9 @@ function parse_commandline(args=ARGS)
             help = "number of spectra to use for stats"
             arg_type = Int
             default = 5_000
+        "-s", "--splice"
+            help = "splice the quantized files into single file"
+            action = :store_true
         "-t", "--tail"
             help = "fraction of samples to ignore at tails"
             action = :append_arg
@@ -55,6 +58,7 @@ function main()::Int
     qlen = parsed_args["qlen"]
     tail = parsed_args["tail"]
     outdir = get(parsed_args, "outdir", "dir")
+    splice = parsed_args["splice"]
 
     # If no tail options were specified, use 3f-6
     isempty(tail) && push!(tail, 3f-6)
@@ -71,7 +75,7 @@ function main()::Int
     end
 
     @info "opening input files"
-    wsfexist, fnexist = open_files(ws, fnames)
+    wsfexist, fnexist, fbhs = open_files(ws, fnames)
 
     @info "gathering stats from $(length(wsfexist)) hosts"
     global_hist = get_global_hist(wsfexist; qlen)
@@ -80,11 +84,19 @@ function main()::Int
     lo, hi = quantile.(global_hist, (first(tail), 1-last(tail)))
     @info "using thresholds $lo and $hi"
 
-    outbasenames = replace.(basename.(fnexist), r"((\.\d\d\d\d)?\.fil$)"=>s".8\1")
-    outnames = joinpath.(outdir, outbasenames)
-    
-    @info "quantizing and writing output to $outdir"
-    write_quantized_files(wsfexist, outnames, lo, hi)
+    if splice
+        outbase = replace(basename(fnexist[1]),
+                          r"^(blc.._)?"=>"spliced_", r"((\.\d\d\d\d)?\.fil)"=>s".8\1")
+        outname = joinpath(outdir, outbase)
+        @info "quantizing, splicing, and writing output to $outname"
+        splice_quantized_file(wsfexist, fbhs, outname, lo, hi)
+    else
+        outbasenames = replace.(basename.(fnexist), r"((\.\d\d\d\d)?\.fil$)"=>s".8\1")
+        outnames = joinpath.(outdir, outbasenames)
+
+        @info "quantizing and writing output to $outdir"
+        @time write_quantized_files(wsfexist, outnames, lo, hi)
+    end
 
     @info "tearing down workers"
     teardown_workers(ws)
