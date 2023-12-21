@@ -74,7 +74,7 @@ function main()::Int
     wsfexist, fnexist = open_files(ws, fnames)
 
     @info "gathering stats from $(length(wsfexist)) hosts"
-    global_hist = get_global_hist(ws; qlen)
+    global_hist = get_global_hist(wsfexist; qlen)
 
     # Compute lo/hi thresholds
     lo, hi = quantile.(global_hist, (first(tail), 1-last(tail)))
