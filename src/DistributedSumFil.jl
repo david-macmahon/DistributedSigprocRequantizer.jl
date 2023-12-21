@@ -15,6 +15,9 @@ function parse_commandline(args=ARGS)
             help = "base input directory"
             arg_type = String
             required = true
+        "-f", "--outfile"
+            help = "spliced filename relative to OUTDIR"
+            arg_type = String
         "-o", "--outdir"
             help = "directory for output files (defaults to DIR)"
             arg_type = String
@@ -61,6 +64,7 @@ function main()::Int
     qlen = parsed_args["qlen"]
     tail = parsed_args["tail"]
     outdir = get(parsed_args, "outdir", "dir")
+    outfile = parsed_args["outfile"]
     splice = parsed_args["splice"]
     show_progress = parsed_args["bar"]
 
@@ -89,9 +93,11 @@ function main()::Int
     @info "using thresholds $lo and $hi"
 
     if splice
-        outbase = replace(basename(fnexist[1]),
-                          r"^(blc.._)?"=>"spliced_", r"((\.\d\d\d\d)?\.fil)"=>s".8\1")
-        outname = joinpath(outdir, outbase)
+        if outfile === nothing
+            outfile = replace(basename(fnexist[1]),
+                            r"^(blc.._)?"=>"spliced_", r"((\.\d\d\d\d)?\.fil)"=>s".8\1")
+        end
+        outname = joinpath(outdir, outfile)
         @info "quantizing, splicing, and writing output to $outname"
         splice_quantized_file(wsfexist, fbhs, outname, lo, hi; show_progress)
     else
